@@ -81,7 +81,12 @@ Java-Mini-Project/
 │   ├── VIPVoter.java           # Subclass — priority vote (Polymorphism)
 │   ├── VoterThread.java        # Thread per voter (Multithreading)
 │   ├── VotingBooth.java        # Shared resource (Race Condition & Deadlock)
-│   └── VotingSystemGUI.java    # Main GUI entry point (Java AWT)
+│   ├── VotingSystemGUI.java    # Main GUI entry point (Java AWT)
+│   ├── InputValidator.java     # Input validation utilities
+│   ├── VoteRecord.java         # Vote transaction model
+│   ├── AuditTrail.java         # Event and vote auditing module
+│   ├── ElectionAnalytics.java  # Reporting and analytics module
+│   └── FileReportExporter.java # CSV export module
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -144,6 +149,8 @@ Java-Mini-Project/
 - **Java JDK 8** or higher installed
 - A terminal or command prompt
 
+> Note: If multiple Java versions are installed, use matching versions for `java` and `javac`.
+
 ### Steps
 
 ```bash
@@ -169,6 +176,10 @@ The GUI window will launch — you can start voting immediately!
 | 🗳 **Add Candidates** | Dynamically add election candidates |
 | 🧑 **Cast Votes** | Vote as Regular or VIP voter type |
 | 📊 **View Results** | See real-time election tallies |
+| 📈 **Election Analytics** | Turnout, vote share, and leading candidate report |
+| 🧾 **Audit Trail** | Timestamped log of vote operations and key events |
+| 💾 **Export Reports** | Export election results and audit records as CSV |
+| ✅ **Input Validation** | Candidate and voter names are validated before processing |
 | ⚠️ **Race Condition Demo** | 20 threads vote unsafely vs. safely |
 | 🔒 **Deadlock Demo** | Two threads deadlock with reverse lock order |
 | ↻ **Reset** | Clear all votes and start fresh |
