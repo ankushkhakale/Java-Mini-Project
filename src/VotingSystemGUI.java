@@ -1,6 +1,10 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * VotingSystemGUI.java - Main GUI Application using Java AWT
@@ -41,6 +45,9 @@ public class VotingSystemGUI extends Frame implements ActionListener {
 
     // Bottom panel - Results and demos
     private Button resultBtn;
+    private Button analyticsBtn;
+    private Button auditTrailBtn;
+    private Button exportBtn;
     private Button raceConditionBtn;
     private Button deadlockBtn;
     private Button resetBtn;
@@ -51,6 +58,9 @@ public class VotingSystemGUI extends Frame implements ActionListener {
     // ==================== DATA ====================
 
     private VotingBooth booth; // The shared voting booth
+    private AuditTrail auditTrail;
+    private ElectionAnalytics analytics;
+    private FileReportExporter exporter;
     private ArrayList<Voter> registeredVoters; // List of all voters
     private int voterCounter; // Auto-increment voter ID
 
@@ -59,6 +69,9 @@ public class VotingSystemGUI extends Frame implements ActionListener {
     public VotingSystemGUI() {
         // Initialize data
         booth = new VotingBooth();
+        auditTrail = new AuditTrail();
+        analytics = new ElectionAnalytics();
+        exporter = new FileReportExporter();
         registeredVoters = new ArrayList<>();
         voterCounter = 1000;
 
@@ -103,6 +116,8 @@ public class VotingSystemGUI extends Frame implements ActionListener {
         log("Default candidates loaded: Alice, Bob, Charlie");
         log("You can add more candidates above.");
         log("─────────────────────────────────────────────────────");
+        auditTrail.logEvent("Application started.");
+        auditTrail.logEvent("Default candidates loaded: Alice, Bob, Charlie");
 
         setVisible(true);
     }
@@ -237,6 +252,27 @@ public class VotingSystemGUI extends Frame implements ActionListener {
         resultBtn.addActionListener(this);
         bottomPanel.add(resultBtn);
 
+        analyticsBtn = new Button("  📈 Analytics  ");
+        analyticsBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        analyticsBtn.setBackground(new Color(52, 152, 219));
+        analyticsBtn.setForeground(Color.WHITE);
+        analyticsBtn.addActionListener(this);
+        bottomPanel.add(analyticsBtn);
+
+        auditTrailBtn = new Button("  🧾 Audit Trail  ");
+        auditTrailBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        auditTrailBtn.setBackground(new Color(22, 160, 133));
+        auditTrailBtn.setForeground(Color.WHITE);
+        auditTrailBtn.addActionListener(this);
+        bottomPanel.add(auditTrailBtn);
+
+        exportBtn = new Button("  💾 Export Reports  ");
+        exportBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        exportBtn.setBackground(new Color(39, 174, 96));
+        exportBtn.setForeground(Color.WHITE);
+        exportBtn.addActionListener(this);
+        bottomPanel.add(exportBtn);
+
         // Race Condition demo button
         raceConditionBtn = new Button("  ⚠ Demo: Race Condition  ");
         raceConditionBtn.setFont(new Font("Arial", Font.BOLD, 12));
@@ -280,6 +316,12 @@ public class VotingSystemGUI extends Frame implements ActionListener {
             castVote();
         } else if (source == resultBtn) {
             showResults();
+        } else if (source == analyticsBtn) {
+            showAnalytics();
+        } else if (source == auditTrailBtn) {
+            showAuditTrail();
+        } else if (source == exportBtn) {
+            exportReports();
         } else if (source == raceConditionBtn) {
             demonstrateRaceCondition();
         } else if (source == deadlockBtn) {
@@ -295,15 +337,22 @@ public class VotingSystemGUI extends Frame implements ActionListener {
      * Adds a new candidate to the election.
      */
     private void addCandidate() {
-        String name = candidateField.getText().trim();
-        if (name.isEmpty()) {
-            log("⚠ Please enter a candidate name!");
+        String name = InputValidator.normalizeName(candidateField.getText());
+        String validationError = InputValidator.validateCandidateName(name);
+        if (!validationError.isEmpty()) {
+            log("⚠ " + validationError);
             return;
         }
-        booth.addCandidate(name);
+
+        if (!booth.addCandidate(name)) {
+            log("⚠ Candidate already exists: " + name);
+            return;
+        }
+
         candidateChoice.add(name);
         candidateField.setText("");
         log("✓ Candidate added: " + name);
+        auditTrail.logEvent("Candidate added: " + name);
     }
 
     /**
@@ -314,9 +363,10 @@ public class VotingSystemGUI extends Frame implements ActionListener {
      * castVote() but produce different outputs.
      */
     private void castVote() {
-        String name = voterNameField.getText().trim();
-        if (name.isEmpty()) {
-            log("⚠ Please enter voter name!");
+        String name = InputValidator.normalizeName(voterNameField.getText());
+        String validationError = InputValidator.validateVoterName(name);
+        if (!validationError.isEmpty()) {
+            log("⚠ " + validationError);
             return;
         }
         if (candidateChoice.getItemCount() == 0) {
@@ -348,8 +398,18 @@ public class VotingSystemGUI extends Frame implements ActionListener {
         try {
             thread.join(); // Wait for thread to complete
             log("   → " + thread.getResult());
+            if (voter.hasVoted()) {
+                auditTrail.logVote(new VoteRecord(
+                        voter.getVoterId(),
+                        voter.getName(),
+                        voter.getVoterType(),
+                        candidate,
+                        thread.getName(),
+                        LocalDateTime.now()));
+            }
         } catch (InterruptedException ex) {
             log("⚠ Thread was interrupted!");
+            auditTrail.logEvent("Vote thread interrupted for voter " + voter.getVoterId());
         }
 
         // Update voter ID for next voter
@@ -366,6 +426,55 @@ public class VotingSystemGUI extends Frame implements ActionListener {
         log("");
         log(booth.getResults());
         log("");
+        auditTrail.logEvent("Results viewed.");
+    }
+
+    private void showAnalytics() {
+        Map<String, Integer> snapshot = booth.getVoteSnapshot();
+        String report = analytics.buildAnalyticsReport(
+                snapshot,
+                booth.getTotalVotes(),
+                registeredVoters.size());
+        log("");
+        log(report);
+        log("");
+        auditTrail.logEvent("Analytics viewed.");
+    }
+
+    private void showAuditTrail() {
+        log("");
+        log("===== RECENT AUDIT EVENTS =====");
+        String events = auditTrail.getRecentEventsText(15);
+        if (events.isEmpty()) {
+            log("No audit events yet.");
+        } else {
+            log(events.trim());
+        }
+        log("===============================");
+        log("");
+    }
+
+    private void exportReports() {
+        String outputDir = new File("reports").getAbsolutePath();
+        try {
+            String resultPath = exporter.exportResultsCsv(
+                    outputDir,
+                    booth.getVoteSnapshot(),
+                    booth.getTotalVotes());
+
+            String auditPath = exporter.exportAuditCsv(
+                    outputDir,
+                    auditTrail.getVotesSnapshot());
+
+            log("✓ Reports exported successfully.");
+            log("  Results: " + resultPath);
+            log("  Audit:   " + auditPath);
+            log("─────────────────────────────────────────────────────");
+            auditTrail.logEvent("Reports exported to " + outputDir);
+        } catch (IOException ex) {
+            log("⚠ Report export failed: " + ex.getMessage());
+            auditTrail.logEvent("Report export failed: " + ex.getMessage());
+        }
     }
 
     /**
@@ -377,6 +486,7 @@ public class VotingSystemGUI extends Frame implements ActionListener {
      * Then runs the same with synchronization to show the fix.
      */
     private void demonstrateRaceCondition() {
+        auditTrail.logEvent("Race condition demonstration started.");
         log("");
         log("╔══════════════════════════════════════════════════╗");
         log("║        RACE CONDITION DEMONSTRATION             ║");
@@ -468,6 +578,7 @@ public class VotingSystemGUI extends Frame implements ActionListener {
         // Reset booth back to original state
         booth.reset();
         booth.setSafeMode(true);
+        auditTrail.logEvent("Race condition demonstration completed.");
     }
 
     /**
@@ -481,6 +592,7 @@ public class VotingSystemGUI extends Frame implements ActionListener {
      * We use a timeout to detect and break out of the deadlock.
      */
     private void demonstrateDeadlock() {
+        auditTrail.logEvent("Deadlock demonstration started.");
         log("");
         log("╔══════════════════════════════════════════════════╗");
         log("║          DEADLOCK DEMONSTRATION                 ║");
@@ -540,6 +652,7 @@ public class VotingSystemGUI extends Frame implements ActionListener {
 
         log("");
         log("─────────────────────────────────────────────────────");
+        auditTrail.logEvent("Deadlock demonstration completed.");
     }
 
     /**
@@ -548,12 +661,14 @@ public class VotingSystemGUI extends Frame implements ActionListener {
     private void resetAll() {
         booth.reset();
         registeredVoters.clear();
+        auditTrail.clear();
         voterCounter = 1000;
         voterIdField.setText("V" + voterCounter);
 
         logArea.setText("");
         log("✓ All votes and data have been reset!");
         log("─────────────────────────────────────────────────────");
+        auditTrail.logEvent("System reset.");
     }
 
     /**

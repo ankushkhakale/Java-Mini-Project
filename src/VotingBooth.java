@@ -1,4 +1,5 @@
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * VotingBooth.java - Shared resource demonstrating RACE CONDITION & DEADLOCK
@@ -13,7 +14,7 @@ import java.util.HashMap;
 public class VotingBooth {
 
     // Shared data: candidate names and their vote counts
-    private HashMap<String, Integer> voteCount;
+    private final LinkedHashMap<String, Integer> voteCount;
 
     // Two lock objects used to demonstrate DEADLOCK
     private final Object lockBooth = new Object();   // Lock for the voting booth
@@ -30,15 +31,19 @@ public class VotingBooth {
 
     // Constructor
     public VotingBooth() {
-        voteCount = new HashMap<>();
+        voteCount = new LinkedHashMap<>();
         totalVotes = 0;
         safeMode = true;       // Default: safe mode ON
         deadlockMode = false;  // Default: deadlock simulation OFF
     }
 
     // Add a candidate to the election
-    public void addCandidate(String name) {
+    public synchronized boolean addCandidate(String name) {
+        if (voteCount.containsKey(name)) {
+            return false;
+        }
         voteCount.put(name, 0);
+        return true;
     }
 
     // Set safe mode ON or OFF
@@ -76,11 +81,13 @@ public class VotingBooth {
                 return "Error: Candidate '" + candidate + "' not found!";
             }
 
+            boolean alreadyVoted = voter.hasVoted();
+
             // Polymorphism in action: castVote() behaves differently
             // for RegularVoter and VIPVoter
             String message = voter.castVote(candidate);
 
-            if (voter.hasVoted()) {
+            if (!alreadyVoted && voter.hasVoted()) {
                 // Safely update the vote count
                 voteCount.put(candidate, voteCount.get(candidate) + 1);
                 totalVotes++;
@@ -104,9 +111,11 @@ public class VotingBooth {
             return "Error: Candidate '" + candidate + "' not found!";
         }
 
+        boolean alreadyVoted = voter.hasVoted();
+
         String message = voter.castVote(candidate);
 
-        if (voter.hasVoted()) {
+        if (!alreadyVoted && voter.hasVoted()) {
             // ⚠ RACE CONDITION: Two threads can read the same value here
             int current = voteCount.get(candidate);
 
@@ -146,8 +155,9 @@ public class VotingBooth {
 
             synchronized (lockCounter) {
                 System.out.println(voter.getName() + " got both locks!");
+                boolean alreadyVoted = voter.hasVoted();
                 String msg = voter.castVote(candidate);
-                if (voter.hasVoted() && voteCount.containsKey(candidate)) {
+                if (!alreadyVoted && voter.hasVoted() && voteCount.containsKey(candidate)) {
                     voteCount.put(candidate, voteCount.get(candidate) + 1);
                     totalVotes++;
                 }
@@ -171,8 +181,9 @@ public class VotingBooth {
 
             synchronized (lockBooth) {
                 System.out.println(voter.getName() + " got both locks!");
+                boolean alreadyVoted = voter.hasVoted();
                 String msg = voter.castVote(candidate);
-                if (voter.hasVoted() && voteCount.containsKey(candidate)) {
+                if (!alreadyVoted && voter.hasVoted() && voteCount.containsKey(candidate)) {
                     voteCount.put(candidate, voteCount.get(candidate) + 1);
                     totalVotes++;
                 }
@@ -189,6 +200,18 @@ public class VotingBooth {
     // Get total votes cast
     public int getTotalVotes() {
         return totalVotes;
+    }
+
+    public synchronized int getCandidateCount() {
+        return voteCount.size();
+    }
+
+    public synchronized Map<String, Integer> getVoteSnapshot() {
+        return new LinkedHashMap<>(voteCount);
+    }
+
+    public synchronized boolean hasCandidate(String candidate) {
+        return voteCount.containsKey(candidate);
     }
 
     // Get all results as a formatted string

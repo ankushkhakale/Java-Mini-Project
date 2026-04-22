@@ -49,6 +49,10 @@ public class Voter {
         return hasVoted;
     }
 
+    public String getVoterType() {
+        return "General";
+    }
+
     // Reset vote status (used when restarting election)
     public void resetVote() {
         this.hasVoted = false;

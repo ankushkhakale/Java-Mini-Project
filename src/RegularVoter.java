@@ -25,6 +25,11 @@ public class RegularVoter extends Voter {
     }
 
     @Override
+    public String getVoterType() {
+        return "Regular";
+    }
+
+    @Override
     public String toString() {
         return "Regular Voter: " + name + " [ID: " + voterId + "]";
     }

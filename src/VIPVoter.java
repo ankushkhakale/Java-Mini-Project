@@ -25,6 +25,11 @@ public class VIPVoter extends Voter {
     }
 
     @Override
+    public String getVoterType() {
+        return "VIP";
+    }
+
+    @Override
     public String toString() {
         return "VIP Voter: " + name + " [ID: " + voterId + "] ★";
     }
