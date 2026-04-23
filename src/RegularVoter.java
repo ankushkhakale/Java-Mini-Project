@@ -1,31 +1,23 @@
 /**
- * RegularVoter.java - Child class demonstrating INHERITANCE & POLYMORPHISM
+ * RegularVoter.java - Child class of Voter
  * 
- * A regular voter who casts a simple vote.
- * Extends the Voter class and overrides castVote() method.
+ * CONCEPT: INHERITANCE - This class extends Voter (inherits name, voterId, etc.)
+ * CONCEPT: POLYMORPHISM - castVote() is overridden with different behavior.
  */
 public class RegularVoter extends Voter {
 
-    // Constructor calls parent constructor using super()
+    // Constructor - calls the parent's constructor using super()
     public RegularVoter(String name, String voterId) {
-        super(name, voterId); // INHERITANCE: calling parent constructor
+        super(name, voterId);
     }
 
-    /**
-     * POLYMORPHISM: Overriding the parent's castVote() method.
-     * Regular voters get a simple vote message.
-     */
+    // POLYMORPHISM: Different message compared to VIPVoter
     @Override
     public String castVote(String candidate) {
         if (hasVoted) {
-            return name + " has already voted! Duplicate vote rejected.";
+            return name + " has already voted!";
         }
         hasVoted = true;
-        return "[Regular Vote] " + name + " voted for " + candidate;
-    }
-
-    @Override
-    public String toString() {
-        return "Regular Voter: " + name + " [ID: " + voterId + "]";
+        return "[Regular] " + name + " voted for " + candidate;
     }
 }

@@ -1,31 +1,23 @@
 /**
- * VIPVoter.java - Another child class demonstrating INHERITANCE & POLYMORPHISM
+ * VIPVoter.java - Another child class of Voter
  * 
- * A VIP voter who gets a priority acknowledgment when voting.
- * Extends the Voter class and overrides castVote() method differently.
+ * CONCEPT: INHERITANCE - This class also extends Voter.
+ * CONCEPT: POLYMORPHISM - castVote() gives a different (priority) message.
  */
 public class VIPVoter extends Voter {
 
-    // Constructor calls parent constructor using super()
+    // Constructor - calls the parent's constructor using super()
     public VIPVoter(String name, String voterId) {
-        super(name, voterId); // INHERITANCE: calling parent constructor
+        super(name, voterId);
     }
 
-    /**
-     * POLYMORPHISM: Same method name as RegularVoter but different behavior.
-     * VIP voters get a priority acknowledgment message.
-     */
+    // POLYMORPHISM: VIP voters get a special priority message
     @Override
     public String castVote(String candidate) {
         if (hasVoted) {
-            return name + " (VIP) has already voted! Duplicate vote rejected.";
+            return name + " (VIP) has already voted!";
         }
         hasVoted = true;
-        return "[VIP Priority Vote] " + name + " voted for " + candidate + " ★";
-    }
-
-    @Override
-    public String toString() {
-        return "VIP Voter: " + name + " [ID: " + voterId + "] ★";
+        return "[VIP] " + name + " voted for " + candidate + " (Priority)";
     }
 }

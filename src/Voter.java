@@ -1,65 +1,42 @@
 /**
- * Voter.java - Base class demonstrating INHERITANCE
+ * Voter.java - Base class (Parent class)
  * 
- * This is the parent class for all types of voters.
- * It contains common properties like name and voterId.
+ * CONCEPT: INHERITANCE
+ * This is the parent class. RegularVoter and VIPVoter 
+ * will inherit (extend) from this class.
  * 
- * CONCEPT: Inheritance - RegularVoter and VIPVoter will extend this class.
- * CONCEPT: Polymorphism - The castVote() method is overridden in child classes.
+ * CONCEPT: POLYMORPHISM
+ * The castVote() method will be overridden in child classes 
+ * to give different behavior.
  */
 public class Voter {
 
-    // Protected so child classes can access these fields directly
+    // 'protected' means child classes can access these directly
     protected String name;
     protected String voterId;
     protected boolean hasVoted;
 
-    // Constructor to initialize voter details
+    // Constructor
     public Voter(String name, String voterId) {
         this.name = name;
         this.voterId = voterId;
-        this.hasVoted = false; // No one has voted initially
+        this.hasVoted = false;
     }
 
     /**
-     * POLYMORPHISM: This method will be overridden by child classes
-     * to provide different voting behavior.
-     * 
-     * @param candidate - The candidate being voted for
-     * @return A message describing the vote action
+     * POLYMORPHISM: This method is overridden in child classes.
+     * Each child class gives a different vote message.
      */
     public String castVote(String candidate) {
         if (hasVoted) {
             return name + " has already voted!";
         }
         hasVoted = true;
-        return name + " (General Voter) voted for " + candidate;
+        return name + " voted for " + candidate;
     }
 
     // Getter methods
-    public String getName() {
-        return name;
-    }
-
-    public String getVoterId() {
-        return voterId;
-    }
-
-    public boolean hasVoted() {
-        return hasVoted;
-    }
-
-    // Reset vote status (used when restarting election)
-    public void resetVote() {
-        this.hasVoted = false;
-    }
-
-    /**
-     * POLYMORPHISM: toString() is overridden from Object class
-     * to give a readable description of the voter.
-     */
-    @Override
-    public String toString() {
-        return "Voter: " + name + " [ID: " + voterId + "]";
-    }
+    public String getName()     { return name; }
+    public String getVoterId()  { return voterId; }
+    public boolean hasVoted()   { return hasVoted; }
 }
