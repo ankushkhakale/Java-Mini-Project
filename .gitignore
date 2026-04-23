@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────
+# Java .gitignore
+# ──────────────────────────────────────────────
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Log files
+*.log
+
+# IDE-specific files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+nbproject/
+build/
+nbbuild/
+dist/
+nbdist/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Build output
+out/
+target/
+bin/
