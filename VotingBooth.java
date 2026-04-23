@@ -64,8 +64,7 @@ public class VotingBooth {
      * 'synchronized' ensures only one thread votes at a time.
      *
      * CONCEPT: POLYMORPHISM
-     * voter.castVote() runs the right version depending on
-     * whether voter is a RegularVoter or VIPVoter.
+     * voter.castVote() calls the overridden version in RegularVoter.
      */
     public synchronized String vote(String candidate, Voter voter) {
         if (!voteCount.containsKey(candidate)) {

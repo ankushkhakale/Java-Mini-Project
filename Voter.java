@@ -2,8 +2,7 @@
  * Voter.java - Base class (Parent class)
  * 
  * CONCEPT: INHERITANCE
- * This is the parent class. RegularVoter and VIPVoter 
- * will inherit (extend) from this class.
+ * This is the parent class. RegularVoter inherits (extends) from this class.
  * 
  * CONCEPT: POLYMORPHISM
  * The castVote() method will be overridden in child classes 

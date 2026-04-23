@@ -11,7 +11,7 @@ public class RegularVoter extends Voter {
         super(name, voterId);
     }
 
-    // POLYMORPHISM: Different message compared to VIPVoter
+    // INHERITANCE: Overrides castVote() from the parent Voter class
     @Override
     public String castVote(String candidate) {
         if (hasVoted) {

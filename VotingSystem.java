@@ -7,7 +7,7 @@ import java.io.IOException;
  * VotingSystem.java - Main Applet (Entry Point)
  *
  * CONCEPTS DEMONSTRATED:
- * 1. INHERITANCE    → RegularVoter & VIPVoter both extend Voter
+ * 1. INHERITANCE    → RegularVoter extends Voter
  * 2. POLYMORPHISM   → castVote() behaves differently per voter type
  * 3. MULTITHREADING → Each vote runs in its own Thread
  * 4. FILE HANDLING  → Results are APPENDED to votes.txt (session-wise)
