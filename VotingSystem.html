@@ -1,18 +1,18 @@
 <!--
     VotingSystem.html
-    This HTML file is used to run the VotingSystem applet.
 
-    HOW TO RUN:
-    1. Open terminal in the project folder
-    2. Compile:  javac *.java
-    3. Run:      appletviewer VotingSystem.html
+    HOW TO RUN (copy-paste this command):
+    appletviewer -J-Djava.security.policy=voting.policy VotingSystem.html
+
+    The -J-Djava.security.policy flag tells appletviewer to use voting.policy,
+    which grants the applet permission to write votes.txt to this folder.
 -->
 <html>
 <head>
-    <title>Java Voting System</title>
+    <title>Voting System</title>
 </head>
 <body>
-    <applet code="VotingSystem.class" width="650" height="500">
+    <applet code="VotingSystem.class" width="600" height="400">
     </applet>
 </body>
 </html>

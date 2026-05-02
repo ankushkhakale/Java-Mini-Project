@@ -1,0 +1,12 @@
+/* voting.policy
+ *
+ * This file grants the applet permission to read/write files.
+ * Without this, appletviewer's security sandbox blocks FileWriter.
+ *
+ * HOW TO USE:
+ *   appletviewer -J-Djava.security.policy=voting.policy VotingSystem.html
+ */
+grant {
+    permission java.io.FilePermission "<<ALL FILES>>", "read, write, delete";
+    permission java.util.PropertyPermission "*", "read";
+};
