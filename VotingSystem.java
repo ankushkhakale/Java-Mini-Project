@@ -4,399 +4,545 @@ import java.awt.event.*;
 import java.io.IOException;
 
 /**
- * VotingSystem.java - Main Applet (Entry Point)
+ * VotingSystem.java - Main Applet
  *
- * CONCEPTS DEMONSTRATED:
- * 1. INHERITANCE    → RegularVoter extends Voter
- * 2. POLYMORPHISM   → castVote() behaves differently per voter type
- * 3. MULTITHREADING → Each vote runs in its own Thread
- * 4. FILE HANDLING  → Results are APPENDED to votes.txt (session-wise)
+ * CONCEPTS USED:
+ * 1. INHERITANCE    - RegularVoter extends Voter
+ * 2. POLYMORPHISM   - castVote() is overridden in RegularVoter
+ * 3. MULTITHREADING - VoterThread extends Thread; each vote runs in its own thread
+ * 4. FILE HANDLING  - Results are appended to votes.txt session-wise
  *
  * HOW TO RUN:
  *   javac *.java
  *   appletviewer VotingSystem.html
+ *
+ * LAYOUT:
+ *   The applet uses CardLayout to switch between four tabs:
+ *   [Vote]  [Candidates]  [Results]  [Save & Reset]
  */
 public class VotingSystem extends Applet implements ActionListener {
 
-    // ─── INPUT FIELDS ───
-    private TextField voterNameField;        // Voter's name input
-    private TextField newCandidateField;     // New candidate name input
+    // ── Tab buttons (act like tab headers) ──
+    private Button tabVoteBtn;
+    private Button tabCandBtn;
+    private Button tabResultBtn;
+    private Button tabSaveBtn;
 
-    // ─── DROPDOWNS ───
-    private Choice candidateChoice;          // Select candidate to vote for
-    private Choice removeCandidateChoice;    // Select candidate to remove
+    // ── CardLayout switches which tab is visible ──
+    private CardLayout cardLayout;
+    private Panel cardPanel;
 
-    // ─── BUTTONS ───
-    private Button voteBtn;
-    private Button resultBtn;
-    private Button saveBtn;       // Appends session to votes.txt
-    private Button resetBtn;      // Clears everything for a new session
-    private Button addCandBtn;    // Add a new candidate
-    private Button removeCandBtn; // Remove a candidate
+    // ── Tab 1: Vote ──
+    private TextField voterNameField;
+    private Choice candidateChoice;
+    private Button castVoteBtn;
+    private Label voteStatusLabel;
 
-    // ─── LOG AREA ───
-    private TextArea logArea;     // Displays all messages and results
+    // ── Tab 2: Candidates ──
+    private TextField newCandidateField;
+    private Button addCandBtn;
+    private java.awt.List candidateList;   // scrollable list showing current candidates
+    private Button removeCandBtn;
 
-    // ─── DATA ───
+    // ── Tab 3: Results ──
+    private TextArea resultsArea;
+    private Label winnerLabel;
+    private Button refreshResultsBtn;
+
+    // ── Tab 4: Save & Reset ──
+    private Button saveBtn;
+    private Button resetBtn;
+    private Label saveStatusLabel;
+
+    // ── Data ──
     private VotingBooth booth;
     private int voterIdCounter;
 
-    // ─────────────────────────────────────────────
-    // init() — Called once when the applet starts
-    // ─────────────────────────────────────────────
+    // Card names used by CardLayout
+    private static final String TAB_VOTE       = "Vote";
+    private static final String TAB_CANDIDATES = "Candidates";
+    private static final String TAB_RESULTS    = "Results";
+    private static final String TAB_SAVE       = "Save & Reset";
+
+    // ─────────────────────────────────────────────────────
+    // init() - Called once when the applet starts
+    // ─────────────────────────────────────────────────────
     @Override
     public void init() {
-        // getCodeBase().getPath() returns the project folder path.
-        // Applets are allowed to use getCodeBase() unlike System.getProperty().
-        String filePath = getCodeBase().getPath() + "votes.txt";
-        booth = new VotingBooth(filePath);
+        booth = new VotingBooth();
+        voterIdCounter = 1;
 
-        // Applet window settings
-        setSize(680, 560);
-        setLayout(new BorderLayout(6, 6));
-        setBackground(new Color(235, 240, 245));
+        setSize(600, 400);
+        setBackground(new Color(245, 245, 245));
+        setLayout(new BorderLayout(0, 0));
 
-        // Add all panels
-        add(buildHeaderPanel(), BorderLayout.NORTH);
-        add(buildCenterPanel(), BorderLayout.CENTER);
-        add(buildButtonPanel(), BorderLayout.SOUTH);
+        // Title bar at the top
+        add(buildTitlePanel(), BorderLayout.NORTH);
 
-        // Show welcome message
-        log("======================================");
-        log("   Welcome to the Voting System!");
-        log("   Session 1 started.");
-        log("======================================");
-        log("Add candidates below, then cast votes.");
-        log("");
+        // Tab buttons just below the title
+        add(buildTabBar(), BorderLayout.CENTER);
     }
 
-    // ─────────────────────────────────────────────
-    // PANEL BUILDERS
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────
+    // Title Panel
+    // ─────────────────────────────────────────────────────
+    private Panel buildTitlePanel() {
+        Panel p = new Panel(new BorderLayout());
+        p.setBackground(new Color(51, 51, 51));
 
-    /**
-     * Top panel — title + all input fields (voting + candidate management).
-     */
-    private Panel buildHeaderPanel() {
-        Panel wrapper = new Panel(new BorderLayout());
-        wrapper.setBackground(new Color(30, 39, 46));
-
-        // Title only — no subtitle
-        Label title = new Label("  VOTING SYSTEM", Label.LEFT);
-        title.setFont(new Font("Arial", Font.BOLD, 17));
+        Label title = new Label("  Voting System", Label.LEFT);
+        title.setFont(new Font("Arial", Font.BOLD, 16));
         title.setForeground(Color.WHITE);
-        wrapper.add(title, BorderLayout.NORTH);
+        p.add(title, BorderLayout.WEST);
 
-        // ── Form rows (4 rows: name, vote-for, add candidate, remove candidate) ──
-        Panel form = new Panel(new GridLayout(4, 2, 6, 5));
-        form.setBackground(new Color(44, 62, 80));
+        Label session = new Label("Session " + booth.getSessionNumber() + "  ", Label.RIGHT);
+        session.setFont(new Font("Arial", Font.PLAIN, 12));
+        session.setForeground(new Color(180, 180, 180));
+        p.add(session, BorderLayout.EAST);
 
-        // Row 1: Voter name
-        Label nameLabel = new Label("  Voter Name:");
-        styleLabel(nameLabel);
-        form.add(nameLabel);
+        return p;
+    }
 
-        voterNameField = new TextField();
-        voterNameField.setFont(new Font("Arial", Font.PLAIN, 13));
-        form.add(voterNameField);
+    // ─────────────────────────────────────────────────────
+    // Tab bar + CardLayout content
+    // ─────────────────────────────────────────────────────
+    private Panel buildTabBar() {
+        Panel wrapper = new Panel(new BorderLayout());
 
-        // Row 2: Select candidate to vote for
-        Label selectLabel = new Label("  Vote For:");
-        styleLabel(selectLabel);
-        form.add(selectLabel);
+        // Row of tab buttons
+        Panel tabRow = new Panel(new GridLayout(1, 4, 2, 0));
+        tabRow.setBackground(new Color(200, 200, 200));
 
-        candidateChoice = new Choice();
-        candidateChoice.setFont(new Font("Arial", Font.PLAIN, 13));
-        form.add(candidateChoice);
+        tabVoteBtn   = makeTabButton(TAB_VOTE);
+        tabCandBtn   = makeTabButton(TAB_CANDIDATES);
+        tabResultBtn = makeTabButton(TAB_RESULTS);
+        tabSaveBtn   = makeTabButton(TAB_SAVE);
 
-        // Row 3: Add candidate
-        Label addLabel = new Label("  Add Candidate:");
-        styleLabel(addLabel);
-        form.add(addLabel);
+        tabRow.add(tabVoteBtn);
+        tabRow.add(tabCandBtn);
+        tabRow.add(tabResultBtn);
+        tabRow.add(tabSaveBtn);
 
-        Panel addRow = new Panel(new BorderLayout(4, 0));
-        newCandidateField = new TextField();
-        newCandidateField.setFont(new Font("Arial", Font.PLAIN, 13));
-        addCandBtn = new Button("Add");
-        addCandBtn.setFont(new Font("Arial", Font.BOLD, 12));
-        addCandBtn.setBackground(new Color(39, 174, 96));
-        addCandBtn.setForeground(Color.WHITE);
-        addCandBtn.addActionListener(this);
-        addRow.add(newCandidateField, BorderLayout.CENTER);
-        addRow.add(addCandBtn, BorderLayout.EAST);
-        form.add(addRow);
+        wrapper.add(tabRow, BorderLayout.NORTH);
 
-        // Row 5: Remove candidate
-        Label removeLabel = new Label("  Remove Candidate:");
-        styleLabel(removeLabel);
-        form.add(removeLabel);
+        // CardLayout holds all tab content panels
+        cardLayout = new CardLayout();
+        cardPanel  = new Panel(cardLayout);
+        cardPanel.setBackground(new Color(245, 245, 245));
 
-        Panel removeRow = new Panel(new BorderLayout(4, 0));
-        removeCandidateChoice = new Choice();
-        removeCandidateChoice.setFont(new Font("Arial", Font.PLAIN, 13));
-        removeCandBtn = new Button("Remove");
-        removeCandBtn.setFont(new Font("Arial", Font.BOLD, 12));
-        removeCandBtn.setBackground(new Color(192, 57, 43));
-        removeCandBtn.setForeground(Color.WHITE);
-        removeCandBtn.addActionListener(this);
-        removeRow.add(removeCandidateChoice, BorderLayout.CENTER);
-        removeRow.add(removeCandBtn, BorderLayout.EAST);
-        form.add(removeRow);
+        cardPanel.add(buildVoteTab(),       TAB_VOTE);
+        cardPanel.add(buildCandidatesTab(), TAB_CANDIDATES);
+        cardPanel.add(buildResultsTab(),    TAB_RESULTS);
+        cardPanel.add(buildSaveTab(),       TAB_SAVE);
 
-        wrapper.add(form, BorderLayout.CENTER);
+        wrapper.add(cardPanel, BorderLayout.CENTER);
+
+        // Show Vote tab first and highlight its button
+        cardLayout.show(cardPanel, TAB_VOTE);
+        highlightTab(tabVoteBtn);
+
         return wrapper;
     }
 
-    /**
-     * Center panel — the green log/console area.
-     */
-    private Panel buildCenterPanel() {
-        Panel center = new Panel(new BorderLayout());
+    // ─────────────────────────────────────────────────────
+    // TAB 1 — Vote
+    // ─────────────────────────────────────────────────────
+    private Panel buildVoteTab() {
+        Panel p = new Panel(null); // absolute positioning for simplicity
+        p.setBackground(new Color(245, 245, 245));
 
-        logArea = new TextArea("", 10, 60, TextArea.SCROLLBARS_VERTICAL_ONLY);
-        logArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        logArea.setEditable(false);
-        logArea.setBackground(new Color(25, 25, 25));
-        logArea.setForeground(new Color(100, 220, 130));
-        center.add(logArea, BorderLayout.CENTER);
+        int lx = 30, fx = 160, fw = 200, lh = 24, fh = 26, gap = 40;
+        int y = 40;
 
-        return center;
+        // Voter Name
+        Label l1 = new Label("Voter Name:");
+        l1.setBounds(lx, y, 120, lh);
+        p.add(l1);
+
+        voterNameField = new TextField();
+        voterNameField.setBounds(fx, y, fw, fh);
+        p.add(voterNameField);
+
+        y += gap;
+
+        // Select Candidate
+        Label l2 = new Label("Vote For:");
+        l2.setBounds(lx, y, 120, lh);
+        p.add(l2);
+
+        candidateChoice = new Choice();
+        candidateChoice.setBounds(fx, y, fw, fh);
+        p.add(candidateChoice);
+
+        y += gap + 10;
+
+        // Cast Vote button
+        castVoteBtn = new Button("Cast Vote");
+        castVoteBtn.setBounds(fx, y, 100, 30);
+        castVoteBtn.setBackground(new Color(70, 130, 180));
+        castVoteBtn.setForeground(Color.WHITE);
+        castVoteBtn.setFont(new Font("Arial", Font.BOLD, 13));
+        castVoteBtn.addActionListener(this);
+        p.add(castVoteBtn);
+
+        y += 50;
+
+        // Status label shows result of last vote action
+        voteStatusLabel = new Label("", Label.LEFT);
+        voteStatusLabel.setBounds(lx, y, 400, lh);
+        voteStatusLabel.setFont(new Font("Arial", Font.ITALIC, 13));
+        p.add(voteStatusLabel);
+
+        return p;
     }
 
-    /**
-     * Bottom panel — action buttons.
-     */
-    private Panel buildButtonPanel() {
-        Panel bottom = new Panel(new FlowLayout(FlowLayout.CENTER, 10, 8));
-        bottom.setBackground(new Color(30, 39, 46));
+    // ─────────────────────────────────────────────────────
+    // TAB 2 — Candidates
+    // ─────────────────────────────────────────────────────
+    private Panel buildCandidatesTab() {
+        Panel p = new Panel(null);
+        p.setBackground(new Color(245, 245, 245));
 
-        voteBtn   = makeButton("  Vote  ",         new Color(41,  128, 185));
-        resultBtn = makeButton("  Results  ",      new Color(142, 68,  173));
-        saveBtn   = makeButton("  Save to File  ", new Color(39,  174, 96));
-        resetBtn  = makeButton("  New Session (Reset)  ", new Color(127, 140, 141));
+        int lx = 30, fx = 160, lh = 24, fh = 26;
 
-        bottom.add(voteBtn);
-        bottom.add(resultBtn);
-        bottom.add(saveBtn);
-        bottom.add(resetBtn);
+        // Add Candidate
+        Label l1 = new Label("Candidate Name:");
+        l1.setBounds(lx, 40, 130, lh);
+        p.add(l1);
 
-        return bottom;
+        newCandidateField = new TextField();
+        newCandidateField.setBounds(fx, 40, 160, fh);
+        p.add(newCandidateField);
+
+        addCandBtn = new Button("Add");
+        addCandBtn.setBounds(330, 40, 60, fh);
+        addCandBtn.setBackground(new Color(60, 160, 80));
+        addCandBtn.setForeground(Color.WHITE);
+        addCandBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        addCandBtn.addActionListener(this);
+        p.add(addCandBtn);
+
+        // Current candidates list (scrollable)
+        Label l2 = new Label("Current Candidates:");
+        l2.setBounds(lx, 85, 150, lh);
+        p.add(l2);
+
+        candidateList = new java.awt.List(6, false);  // 6 visible rows, single select
+        candidateList.setBounds(lx, 110, 260, 140);
+        p.add(candidateList);
+
+        removeCandBtn = new Button("Remove Selected");
+        removeCandBtn.setBounds(lx, 260, 140, 28);
+        removeCandBtn.setBackground(new Color(190, 60, 50));
+        removeCandBtn.setForeground(Color.WHITE);
+        removeCandBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        removeCandBtn.addActionListener(this);
+        p.add(removeCandBtn);
+
+        return p;
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────
+    // TAB 3 — Results
+    // ─────────────────────────────────────────────────────
+    private Panel buildResultsTab() {
+        Panel p = new Panel(null);
+        p.setBackground(new Color(245, 245, 245));
+
+        // Results text area (light, readable)
+        resultsArea = new TextArea("", 8, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
+        resultsArea.setBounds(30, 30, 400, 180);
+        resultsArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        resultsArea.setEditable(false);
+        resultsArea.setBackground(new Color(255, 255, 255));
+        resultsArea.setForeground(new Color(30, 30, 30));
+        p.add(resultsArea);
+
+        // Winner label
+        winnerLabel = new Label("", Label.LEFT);
+        winnerLabel.setBounds(30, 220, 450, 24);
+        winnerLabel.setFont(new Font("Arial", Font.BOLD, 13));
+        winnerLabel.setForeground(new Color(30, 100, 30));
+        p.add(winnerLabel);
+
+        // Refresh button
+        refreshResultsBtn = new Button("Refresh Results");
+        refreshResultsBtn.setBounds(30, 255, 130, 28);
+        refreshResultsBtn.setBackground(new Color(100, 80, 180));
+        refreshResultsBtn.setForeground(Color.WHITE);
+        refreshResultsBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        refreshResultsBtn.addActionListener(this);
+        p.add(refreshResultsBtn);
+
+        return p;
+    }
+
+    // ─────────────────────────────────────────────────────
+    // TAB 4 — Save & Reset
+    // ─────────────────────────────────────────────────────
+    private Panel buildSaveTab() {
+        Panel p = new Panel(null);
+        p.setBackground(new Color(245, 245, 245));
+
+        // Save button
+        saveBtn = new Button("Save Results to File");
+        saveBtn.setBounds(60, 50, 200, 35);
+        saveBtn.setBackground(new Color(60, 160, 80));
+        saveBtn.setForeground(Color.WHITE);
+        saveBtn.setFont(new Font("Arial", Font.BOLD, 13));
+        saveBtn.addActionListener(this);
+        p.add(saveBtn);
+
+        Label saveInfo = new Label("Appends this session's votes to votes.txt");
+        saveInfo.setBounds(60, 90, 360, 20);
+        saveInfo.setFont(new Font("Arial", Font.PLAIN, 11));
+        saveInfo.setForeground(new Color(100, 100, 100));
+        p.add(saveInfo);
+
+        // Divider gap
+        Label spacer = new Label("─────────────────────────────────");
+        spacer.setBounds(60, 118, 320, 18);
+        spacer.setForeground(new Color(180, 180, 180));
+        p.add(spacer);
+
+        // Reset button
+        resetBtn = new Button("Start New Session (Reset)");
+        resetBtn.setBounds(60, 145, 220, 35);
+        resetBtn.setBackground(new Color(160, 80, 60));
+        resetBtn.setForeground(Color.WHITE);
+        resetBtn.setFont(new Font("Arial", Font.BOLD, 13));
+        resetBtn.addActionListener(this);
+        p.add(resetBtn);
+
+        Label resetInfo = new Label("Auto-saves first, then clears all candidates and votes.");
+        resetInfo.setBounds(60, 185, 420, 20);
+        resetInfo.setFont(new Font("Arial", Font.PLAIN, 11));
+        resetInfo.setForeground(new Color(100, 100, 100));
+        p.add(resetInfo);
+
+        // Status label shows feedback after clicking Save or Reset
+        saveStatusLabel = new Label("", Label.LEFT);
+        saveStatusLabel.setBounds(60, 220, 450, 24);
+        saveStatusLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        saveStatusLabel.setForeground(new Color(50, 100, 50));
+        p.add(saveStatusLabel);
+
+        return p;
+    }
+
+    // ─────────────────────────────────────────────────────
     // EVENT HANDLING
-    // ─────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────
     @Override
     public void actionPerformed(ActionEvent e) {
         Object src = e.getSource();
 
-        if (src == voteBtn)       castVote();
-        else if (src == resultBtn)     showResults();
-        else if (src == saveBtn)       saveToFile();
-        else if (src == resetBtn)      resetSession();
-        else if (src == addCandBtn)    addCandidate();
-        else if (src == removeCandBtn) removeCandidate();
+        // Tab switching
+        if (src == tabVoteBtn) {
+            cardLayout.show(cardPanel, TAB_VOTE);
+            highlightTab(tabVoteBtn);
+
+        } else if (src == tabCandBtn) {
+            cardLayout.show(cardPanel, TAB_CANDIDATES);
+            highlightTab(tabCandBtn);
+
+        } else if (src == tabResultBtn) {
+            refreshResults(); // auto-refresh when switching to Results tab
+            cardLayout.show(cardPanel, TAB_RESULTS);
+            highlightTab(tabResultBtn);
+
+        } else if (src == tabSaveBtn) {
+            cardLayout.show(cardPanel, TAB_SAVE);
+            highlightTab(tabSaveBtn);
+
+        // Feature actions
+        } else if (src == castVoteBtn)       castVote();
+        else if (src == addCandBtn)          addCandidate();
+        else if (src == removeCandBtn)       removeCandidate();
+        else if (src == refreshResultsBtn)   refreshResults();
+        else if (src == saveBtn)             saveToFile();
+        else if (src == resetBtn)            resetSession();
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────
     // FEATURE METHODS
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────
 
     /**
-     * Add a new candidate to both the booth and the dropdowns.
+     * Add a candidate to the booth and update both the
+     * candidateList (Tab 2) and the candidateChoice dropdown (Tab 1).
      */
     private void addCandidate() {
         String name = newCandidateField.getText().trim();
 
         if (name.isEmpty()) {
-            log("Please type a candidate name first.");
             return;
         }
 
         if (booth.hasCandidate(name)) {
-            log("'" + name + "' is already in the list.");
+            voteStatusLabel.setText("'" + name + "' already exists.");
             return;
         }
 
-        // Add to data
         booth.addCandidate(name);
-
-        // Add to both dropdowns
-        candidateChoice.add(name);
-        removeCandidateChoice.add(name);
-
+        candidateChoice.add(name);    // update Vote tab dropdown
+        candidateList.add(name);      // update Candidates tab list
         newCandidateField.setText("");
-        log("Candidate added: " + name);
     }
 
     /**
-     * Remove the selected candidate from booth and both dropdowns.
+     * Remove the selected candidate from the list, the dropdown, and the booth.
      */
     private void removeCandidate() {
-        if (removeCandidateChoice.getItemCount() == 0) {
-            log("No candidates to remove.");
-            return;
+        int selected = candidateList.getSelectedIndex();
+        if (selected == -1) {
+            return;  // nothing selected
         }
 
-        String name = removeCandidateChoice.getSelectedItem();
+        String name = candidateList.getSelectedItem();
 
-        // Remove from data
         booth.removeCandidate(name);
+        candidateList.remove(selected);
 
-        // Remove from both dropdowns by rebuilding them
-        syncDropdownsFromBooth();
-
-        log("Candidate removed: " + name);
+        // Rebuild the vote-for dropdown to stay in sync
+        rebuildCandidateChoice();
     }
 
     /**
-     * Cast a vote — uses MULTITHREADING and INHERITANCE.
+     * Cast a vote.
      *
-     * MULTITHREADING: The vote runs in a separate VoterThread.
-     * INHERITANCE: RegularVoter extends Voter and overrides castVote().
+     * MULTITHREADING: runs in a separate VoterThread.
+     * INHERITANCE:    RegularVoter extends Voter and overrides castVote().
      */
     private void castVote() {
         String name = voterNameField.getText().trim();
 
         if (name.isEmpty()) {
-            log("Please enter your name.");
+            voteStatusLabel.setText("Please enter your name.");
             return;
         }
 
         if (!booth.hasCandidates()) {
-            log("No candidates available. Please add candidates first.");
+            voteStatusLabel.setText("No candidates yet. Go to the Candidates tab.");
             return;
         }
 
         String candidate = candidateChoice.getSelectedItem();
         if (candidate == null) {
-            log("Please select a candidate.");
+            voteStatusLabel.setText("Please select a candidate.");
             return;
         }
 
         String voterId = "V" + voterIdCounter++;
 
-        // INHERITANCE: RegularVoter extends Voter — creates the voter object
+        // INHERITANCE: RegularVoter extends Voter
         Voter voter = new RegularVoter(name, voterId);
 
-        // MULTITHREADING: run the vote inside a new thread
+        // MULTITHREADING: vote runs in its own thread
         VoterThread thread = new VoterThread(voter, candidate, booth);
         thread.start();
 
         try {
-            thread.join(); // Wait for the thread to finish before reading result
+            thread.join(); // wait for the thread to finish
         } catch (InterruptedException ex) {
-            log("Vote thread was interrupted.");
+            voteStatusLabel.setText("Vote interrupted.");
+            return;
         }
 
-        log(thread.getResult());
+        voteStatusLabel.setText("Vote recorded successfully.");
         voterNameField.setText("");
     }
 
     /**
-     * Show the current session's results and the winner in the log area.
+     * Refresh the Results tab content (vote counts + winner).
      */
-    private void showResults() {
-        log("");
-        log(booth.getResults());   // Prints each candidate's vote count
-        log(booth.getWinner());    // Prints the current winner
-        log("");
+    private void refreshResults() {
+        resultsArea.setText(booth.getResults());
+        winnerLabel.setText(booth.getWinner());
     }
 
     /**
-     * FILE HANDLING: Append current session results to votes.txt.
-     *
-     * The file is NEVER overwritten — each session's results are
-     * added to the bottom of the file.
-     * The full path is printed so the user knows exactly where it is.
+     * FILE HANDLING: Append this session's results to votes.txt.
      */
     private void saveToFile() {
         if (!booth.hasCandidates()) {
-            log("Nothing to save — no candidates in this session.");
+            saveStatusLabel.setText("Nothing to save. Add candidates first.");
             return;
         }
 
         try {
-            String savedPath = booth.appendSessionToFile();
-            log("Session " + booth.getSessionNumber() + " saved to:");
-            log("  " + savedPath);
+            // FILE HANDLING: appendSessionToFile() uses FileWriter in append mode.
+            // It writes to vote.txt without erasing previous sessions.
+            booth.appendSessionToFile();
+            saveStatusLabel.setText("Saved to: vote.txt  (in Mini Project folder)");
         } catch (IOException ex) {
-            log("Error saving file: " + ex.getMessage());
+            saveStatusLabel.setText("Error: " + ex.getMessage());
         }
     }
 
     /**
-     * Reset: Saves the current session first, then clears everything.
-     * All candidates and votes are removed for a fresh new session.
+     * Reset: auto-save, then clear everything for a fresh new session.
      */
     private void resetSession() {
-        // Auto-save current session before resetting (if there's anything to save)
+        // Auto-save before clearing
         if (booth.hasCandidates() && booth.getTotalVotes() > 0) {
             try {
-                booth.appendSessionToFile(); // auto-save before reset
-                log("Auto-saved Session " + booth.getSessionNumber() + " to file.");
+                booth.appendSessionToFile();
             } catch (IOException ex) {
-                log("Warning: Could not auto-save session.");
+                saveStatusLabel.setText("Warning: Could not save before reset.");
             }
         }
 
-        // Reset booth (clears all candidates, bumps session number)
+        // Clear all data
         booth.reset();
-
-        // Clear both dropdowns completely
-        candidateChoice.removeAll();
-        removeCandidateChoice.removeAll();
-
-        // Reset voter ID counter
         voterIdCounter = 1;
 
-        // Clear log and show new session header
-        logArea.setText("");
-        log("======================================");
-        log("   New Session " + booth.getSessionNumber() + " started!");
-        log("   Previous session was auto-saved.");
-        log("======================================");
-        log("Add new candidates to begin voting.");
-        log("");
+        // Clear all UI lists and dropdowns
+        candidateChoice.removeAll();
+        candidateList.removeAll();
+        resultsArea.setText("");
+        winnerLabel.setText("");
+        voteStatusLabel.setText("");
+        saveStatusLabel.setText("Session reset. New session " + booth.getSessionNumber() + " started.");
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────
     // HELPER METHODS
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────
 
     /**
-     * Rebuilds both vote-for and remove dropdowns from the booth's
-     * current candidate list. Called after removing a candidate.
+     * Rebuild the Vote tab's candidate dropdown from the current booth list.
+     * Called after removing a candidate to keep it in sync.
      */
-    private void syncDropdownsFromBooth() {
+    private void rebuildCandidateChoice() {
         candidateChoice.removeAll();
-        removeCandidateChoice.removeAll();
-
         for (String c : booth.getCandidates()) {
             candidateChoice.add(c);
-            removeCandidateChoice.add(c);
         }
     }
 
-    /** Append a line to the log area. */
-    private void log(String message) {
-        logArea.append(message + "\n");
-    }
-
-    /** Creates a styled button and registers this class as its listener. */
-    private Button makeButton(String label, Color bg) {
+    /**
+     * Creates a tab button with consistent styling.
+     */
+    private Button makeTabButton(String label) {
         Button btn = new Button(label);
-        btn.setFont(new Font("Arial", Font.BOLD, 12));
-        btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
+        btn.setFont(new Font("Arial", Font.PLAIN, 12));
+        btn.setBackground(new Color(210, 210, 210));
+        btn.setForeground(new Color(50, 50, 50));
         btn.addActionListener(this);
         return btn;
     }
 
-    /** Styles a label for the dark header panel. */
-    private void styleLabel(Label label) {
-        label.setFont(new Font("Arial", Font.BOLD, 13));
-        label.setForeground(Color.WHITE);
+    /**
+     * Highlights the active tab button and resets all others to normal.
+     */
+    private void highlightTab(Button active) {
+        Button[] allTabs = { tabVoteBtn, tabCandBtn, tabResultBtn, tabSaveBtn };
+        for (Button b : allTabs) {
+            b.setBackground(new Color(210, 210, 210));
+            b.setForeground(new Color(50, 50, 50));
+        }
+        active.setBackground(new Color(255, 255, 255));
+        active.setForeground(new Color(0, 0, 0));
     }
 }

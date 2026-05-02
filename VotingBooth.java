@@ -8,11 +8,11 @@ import java.util.Date;
  *
  * CONCEPT: FILE HANDLING
  * Every time "Save to File" is clicked, the current session's
- * results are APPENDED to votes.txt (not overwritten).
+ * results are APPENDED to vote.txt (not overwritten).
  * This means every session's history is preserved in the file.
  *
- * The file is saved to the same folder where the .class files are,
- * using the absolute path so it is always visible in the project directory.
+ * The absolute path to vote.txt is hardcoded below so the applet
+ * always finds the correct file in the project folder.
  *
  * CONCEPT: MULTITHREADING (synchronized)
  * The vote() method is synchronized so only one thread
@@ -23,22 +23,22 @@ public class VotingBooth {
     // LinkedHashMap keeps candidates in the order they were added
     private LinkedHashMap<String, Integer> voteCount;
 
-    // Path to votes.txt — set by the applet using getCodeBase()
-    private String filePath;
+    // Absolute path to vote.txt — hardcoded so it always finds the right file.
+    // This is the file manually created in the project folder.
+    private static final String FILE_PATH =
+        "/home/ankush/Documents/Java/Mini Project/vote.txt";
 
     // Session number — increases every time Reset is called
     private int sessionNumber;
 
     /**
-     * Constructor accepts the file path from the applet.
-     * The applet uses getCodeBase().getPath() to get the
-     * project folder path (this is allowed inside an applet).
+     * Constructor.
+     * FILE HANDLING: We use a fixed absolute path for vote.txt
+     * so that FileWriter always knows exactly where to write.
      */
-    public VotingBooth(String filePath) {
+    public VotingBooth() {
         voteCount = new LinkedHashMap<>();
         sessionNumber = 1;
-        // votes.txt will be saved in the same folder as the .class files
-        this.filePath = filePath;
     }
 
     // Add a new candidate
@@ -123,12 +123,13 @@ public class VotingBooth {
      * Total   : 6 votes
      * ──────────────────────────
      */
-    public String appendSessionToFile() throws IOException {
+    public void appendSessionToFile() throws IOException {
         // Get current date and time for the session header
         String timestamp = new SimpleDateFormat("dd-MMM-yyyy hh:mm a").format(new Date());
 
-        // Open file in APPEND mode (true = append, do not overwrite)
-        FileWriter fw = new FileWriter(filePath, true);
+        // FILE HANDLING: Open vote.txt in APPEND mode.
+        // true = append to existing content, never overwrite.
+        FileWriter fw = new FileWriter(FILE_PATH, true);
 
         fw.write("--------------------------------------------------\n");
         fw.write("SESSION " + sessionNumber + " - " + timestamp + "\n");
@@ -139,11 +140,10 @@ public class VotingBooth {
         }
 
         fw.write("Total Votes : " + getTotalVotes() + "\n");
+        fw.write("Winner      : " + getWinner() + "\n");
         fw.write("--------------------------------------------------\n\n");
 
-        fw.close(); // Always close the file
-
-        return filePath; // Return path so GUI can show it to user
+        fw.close(); // Always close the file after writing
     }
 
     /**
