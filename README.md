@@ -267,6 +267,6 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 <div align="center">
 
-*Built with ❤️ as a Java OOP Mini Project — May 2026*
+*Built with ❤️ as a Java OOP Mini Project — April 2026*
 
 </div>
